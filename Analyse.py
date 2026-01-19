@@ -33,54 +33,10 @@ df = pd.concat(all_results, ignore_index=True)
 # Sort values for cleaner plotting
 df.sort_values(by=['dataset', 'model'], inplace=True)
 
-# -----------------------------
-# 2. Plotting Model Metrics
-# -----------------------------
-
 sns.set(style="whitegrid")
 
-# Barplot: AUC per model
-plt.figure(figsize=(10, 6))
-sns.barplot(data=df, x='model', y='avg_auc', errorbar=None)
-plt.title('Average AUC per Model')
-plt.ylabel('Mean AUC')
-plt.xlabel('Model')
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.savefig("plot_auc.pdf")
-
-# Barplot: F1-score per model
-plt.figure(figsize=(10, 6))
-sns.barplot(data=df, x='model', y='avg_f1', errorbar=None)
-plt.title('Average F1-score per Model')
-plt.ylabel('Mean F1-score')
-plt.xlabel('Model')
-plt.xticks(rotation=45)
-plt.tight_layout()
-#plt.savefig("plot_f1.png")
-
-# Barplot: Accuracy per model
-plt.figure(figsize=(10, 6))
-sns.barplot(data=df, x='model', y='avg_accuracy', errorbar=None)
-plt.title('Average Accuracy per Model')
-plt.ylabel('Mean Accuracy')
-plt.xlabel('Model')
-plt.xticks(rotation=45)
-plt.tight_layout()
-#plt.savefig("plot_accuracy.png")
-
-# Barplot: Model size
-plt.figure(figsize=(10, 6))
-sns.barplot(data=df, x='model', y='model_size', errorbar=None)
-plt.title('Model Size (Number of Parameters)')
-plt.ylabel('Size (Parameters)')
-plt.xlabel('Model')
-plt.xticks(rotation=45)
-plt.tight_layout()
-#plt.savefig("plot_model_size.png")
-
 # -----------------------------
-# 3. Heatmap: AUC per Dataset and Model
+# 2. Heatmap: AUC per Dataset and Model
 # -----------------------------
 
 plt.figure(figsize=(10, 5))
@@ -90,56 +46,9 @@ plt.title("AUC per Dataset and Model")
 plt.tight_layout()
 plt.savefig("auc_dataset_model.pdf")
 
-# -----------------------------
-# 4. Scatterplot: Model Size vs AUC
-# -----------------------------
-
-plt.figure(figsize=(8,6))
-sns.scatterplot(data=df, x='model_size', y='avg_auc', hue='model', s=150)
-plt.title("Performance vs Complexity")
-plt.xlabel("Model Size")
-plt.ylabel("Mean AUC")
-plt.tight_layout()
-#plt.savefig("plot.png")
 
 # -----------------------------
-# 5. Radar Chart: Multi-Metric Comparison
-# -----------------------------
-
-# Compute average metrics per model
-metrics = ['avg_auc', 'avg_f1', 'avg_accuracy', 'avg_inference_time', 'model_size']
-df_mean = df.groupby('model')[metrics].mean().reset_index()
-
-# Normalize metrics to [0, 1] scale
-scaler = MinMaxScaler()
-df_scaled = df_mean.copy()
-df_scaled[metrics] = scaler.fit_transform(df_mean[metrics])
-
-# Radar chart setup
-categories = metrics
-N = len(categories)
-angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
-angles += angles[:1]  # loop to close the shape
-
-fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-
-# Plot each model's values
-for _, row in df_scaled.iterrows():
-    values = row[metrics].tolist()
-    values += values[:1]  # close loop
-    ax.plot(angles, values, label=row['model'])
-    ax.fill(angles, values, alpha=0.1)
-
-ax.set_title("Radar Chart Comparison of Models")
-ax.set_xticks(angles[:-1])
-ax.set_xticklabels(categories)
-ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
-plt.tight_layout()
-plt.savefig("radar_chart_models.pdf")
-plt.show()
-
-# -----------------------------
-# 6. Prepare CSV for MCM (Multiple Comparison Matrix)
+# 3. Prepare CSV for MCM (Multiple Comparison Matrix)
 # -----------------------------
 
 METRIC = "avg_auc"  # Can also use 'avg_f1' or others
@@ -168,7 +77,7 @@ df_pivot.to_csv(csv_output, index=False)
 print(f"CSV ready for MCM: {csv_output}")
 
 # -----------------------------
-# 7. Generate Multiple Comparison Matrix (MCM)
+# 4. Generate Multiple Comparison Matrix (MCM)
 # -----------------------------
 
 from multi_comp_matrix import MCM
@@ -189,3 +98,55 @@ MCM.compare(
     fig_size="14,6",
     used_statistic="AUC"
 )
+
+
+# -----------------------------
+# 5. Bubble plot
+# -----------------------------
+
+# Filtrer les modèles à comparer
+df_plot = df_mean[df_mean['model'].isin(['FCN', 'LSTM', 'RNN', 'DKTPLUS', 'SAKT', 'KQN', 'DKVMN'])].copy()
+
+plt.figure(figsize=(12, 8))
+
+# Couleurs différentes pour chaque modèle
+colors = plt.cm.tab10(np.linspace(0, 1, len(df_plot)))
+
+# Taille des bulles avec log ou sqrt compression
+#bubble_sizes = np.sqrt(df_plot['model_size'])*2 # Ajuster ce facteur si besoin
+
+from sklearn.preprocessing import MinMaxScaler
+
+scaler = MinMaxScaler(feature_range=(500, 2000))  # plage visible
+bubble_sizes = scaler.fit_transform(df_plot[['model_size']]).flatten()
+
+# Tracer chaque modèle individuellement
+for i, (index, row) in enumerate(df_plot.iterrows()):
+    plt.scatter(
+        row['avg_inference_time'],
+        row['avg_auc'],
+        s=bubble_sizes[index],
+        color=colors[i],
+        edgecolors='black',
+        alpha=0.6
+    )
+    # Afficher nom + taille du modèle
+    label = f"{row['model']} ({int(row['model_size']):,})"
+    plt.text(row['avg_inference_time'] + 0.05, row['avg_auc'], label, fontsize=9)
+
+# Axes et titres avec tailles de police augmentées
+plt.xlabel("Average Inference Time (seconds)", fontsize=16)
+plt.ylabel("Mean AUC", fontsize=16)
+plt.title("Models Comparison- Inference Time vs AUC", fontsize=20)
+
+
+
+# Légende fictive pour les tailles de modèle
+for size in [1e3, 1e4, 1e5, 1e6]:
+    plt.scatter([], [], s=np.sqrt(size) * 2, label=f"{int(size):,} params", color='gray', alpha=0.4, edgecolors='k')
+
+plt.legend(scatterpoints=1, frameon=True, labelspacing=1, title="Model size",fontsize=10,title_fontsize=11 )
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("bubble_plot.pdf")
+plt.show()
