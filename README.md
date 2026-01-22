@@ -40,11 +40,23 @@ Running each model multiple times helps to:
   
   Make comparisons between models more reliable
 
+## Datasets
+
+Only two datasets are included in this repository.
+All other datasets must be downloaded separately from their official sources.
+
+After downloading, datasets should be placed in the `dataset/` directory, with one subfolder per dataset (e.g., `dataset/assist2009/`, `dataset/statics/`, etc.).
+Each folder must contain the required CSV files (`builder_train.csv`, `builder_test.csv`) following the specified format.
+
+Once this structure is respected, all scripts (`run.py`, `n_runs.py`) will run automatically without additional configuration.
+
 ## Dataset Format
 Each .csv file should follow a three-line structure for each sequence:
 ```bash
 <sequence_length>
 <question_id_1>,<question_id_2>,...
 <correctness_1>,<correctness_2>,...
+
+
 
 ```
