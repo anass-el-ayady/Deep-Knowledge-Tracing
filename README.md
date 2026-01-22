@@ -24,7 +24,7 @@ python run.py --lstm --hidden=128 --epochs=10
 ```
 ## Train All Models with Multiple Runs
 ```bash
-python n_runs.py --lstm --hidden=128 --epochs=10
+python n_runs.py --hidden=128 --epochs=10
 ```
 Iterates through all model types (defined in model_types)
 Runs each model n_runs times (default: 5)
